@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostType {
+  Text
+  Image
+  Video
+}
+
+enum FriendStatus {
+  Pending
+  Friend
+  Blocked
+}
+
+enum AttachmentType {
+  Image
+  File
+}
+
+enum UserStatus {
+  Active
+  Inactive
+}
+
+model Users {
+  UserId                     Int           @id @default(autoincrement())
+  Username                   String        @db.VarChar(255)
+  Password                   String        @db.VarChar(255)
+  Email                      String        @unique @db.VarChar(255)
+  ProfilePicture             String?       @db.VarChar(50)
+  AccountCreationDate        DateTime      @default(now())
+  Status                     UserStatus    @default(Inactive)
+  Posts                      Posts[]
+  Comments                   Comments[]
+  Reaction                   Reactions[]
+  FriendshipRequestsSent     Friendships[] @relation("SentFriendships")
+  FriendshipRequestsReceived Friendships[] @relation("ReceivedFriendships")
+  Sharings                   Sharings[]
+  MessagesSent               Messages[]    @relation("SentMessages")
+  MessagesReceived           Messages[]    @relation("ReceivedMessages")
+}
+
+model Posts {
+  PostId      Int         @id @default(autoincrement())
+  UserId      Int
+  PostText    String?     @db.VarChar(255)
+  PostType    PostType
+  PostContent String      @db.VarChar(255)
+  PostDate    DateTime    @default(now())
+  Users       Users       @relation(fields: [UserId], references: [UserId])
+  Reaction    Reactions[]
+  Comments    Comments[]
+  Sharings    Sharings[]
+}
+
+model Friendships {
+  FriendshipId        Int           @id @default(autoincrement())
+  RequesterUserId     Int
+  RecipientUserId     Int
+  FriendshipStatus    FriendStatus? @default(Pending)
+  FriendshipRequester Users         @relation("SentFriendships", fields: [RequesterUserId], references: [UserId])
+  FriendshipRecipient Users         @relation("ReceivedFriendships", fields: [RecipientUserId], references: [UserId])
+
+  @@unique([RequesterUserId, RecipientUserId])
+}
+
+model Comments {
+  CommentId      Int         @id @default(autoincrement())
+  CommentContent String      @db.VarChar(255)
+  CommentDate    DateTime    @default(now())
+  UserId         Int
+  PostId         Int
+  User           Users       @relation(fields: [UserId], references: [UserId])
+  Post           Posts       @relation(fields: [PostId], references: [PostId])
+  Reactions      Reactions[]
+}
+
+model Reactions {
+  ReactionId   Int       @id @default(autoincrement())
+  ReactionType String?   @db.VarChar(50)
+  UserId       Int
+  PostId       Int?
+  CommentId    Int?
+  User         Users     @relation(fields: [UserId], references: [UserId])
+  Post         Posts?    @relation(fields: [PostId], references: [PostId])
+  Comments     Comments? @relation(fields: [CommentId], references: [CommentId])
+}
+
+model Sharings {
+  SharingId   Int      @id @default(autoincrement())
+  SharingDate DateTime @default(now())
+  SharingText String   @db.VarChar(255)
+  UserId      Int
+  PostId      Int
+  User        Users    @relation(fields: [UserId], references: [UserId])
+  Post        Posts    @relation(fields: [PostId], references: [PostId])
+}
+
+model Messages {
+  MessageId       Int           @id @default(autoincrement())
+  MessageContent  String        @db.VarChar(255)
+  MessageSendDate DateTime      @default(now())
+  SenderId        Int
+  RecipientId     Int
+  Sender          Users         @relation("SentMessages", fields: [SenderId], references: [UserId])
+  Recipient       Users         @relation("ReceivedMessages", fields: [RecipientId], references: [UserId])
+  Attachments     Attachments[]
+}
+
+model Attachments {
+  AttachemntId   Int            @id @default(autoincrement())
+  AttachmentPath String         @db.VarChar(50)
+  AttachmentType AttachmentType
+  MessageId      Int
+  Message        Messages       @relation(fields: [MessageId], references: [MessageId])
+}
